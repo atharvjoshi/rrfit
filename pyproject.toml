@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "rrfit"
+version = "0.1.0"
+description = "Extract quality factors from reflection and transmission measurements of microwave resonators"
+authors = ["Atharv Joshi <atharvjoshi@ymail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+numpy = "^1.23.5"
+matplotlib = "^3.6.2"
+h5py = "^3.7.0"
+lmfit = "^1.0.3"
+scipy = "^1.9.3"
+
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.17.1"
+black = "^22.10.0"
+notebook = "^6.5.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
