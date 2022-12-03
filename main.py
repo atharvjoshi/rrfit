@@ -22,19 +22,19 @@ else:
 
 # %% (3) SET CALIBRATION PARAMETERS
 # cable delay (s)
-tau = 1.1324028e-07
+tau = 0
 
 # off-resonant point
-orp = -2.532587e-06-6.960122e-06j
+orp = 0.07109979+0.1113638j
 
 # [left:right] to select data for phase fit
-pfit_slice = slice(1012, 1474)
+pfit_slice = slice(85, 311)
 start, stop = pfit_slice.start, pfit_slice.stop
 
 # %% (4) DATA LOAD DETAILS
-dataset_name = "W3_08_7.06_-150"
-date = "20221123"
-datafilename = "061935_vnasweep_7.06GHz_-1e+02pow_750reps"
+dataset_name = "W3_10_6.87_-170"
+date = "20221124"
+datafilename = "160006_vnasweep_6.87GHz_-1.7e+02pow_1500reps"
 datafilepath = Path.cwd() / f"data/wheel/{date}/{datafilename}.hdf5"
 
 # %% (5) READ DATA FROM DATAFILE
@@ -144,8 +144,7 @@ circlefit_ax.add_patch(circle)
 fig
 
 # %% (12) FIND OFF-RESONANT POINT AFTER A PHASE FIT
-pfit_ax.clear()
-s21phaseo = np.unwrap(np.angle((s21cal - center)), discont=1.8*np.pi)
+s21phaseo = np.unwrap(np.angle((s21cal - center)))
 Ql_g = fr_mf / fwhm_mf
 pfit_data, pfit_params, pfit_res = fit_phase(fs_pf, s21phaseo, start, Ql_g, pfit_ax)
 fr, Ql, theta_pf = pfit_params["fr"], pfit_params["Ql"], pfit_params["theta"]

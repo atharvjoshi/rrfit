@@ -13,9 +13,9 @@ from delayfit import fit_delay_circular, fit_delay_linear
 from resonator import fit_magnitude, fit_phase, remove_background, remove_slope
 
 # %% DATA LOAD DETAILS
-dataset_name = "W3_08_7.06_-120"
-date = "20221121"
-datafilename = "150601_vnasweep_7.06GHz_-70.0pow_150reps"
+dataset_name = "W3_10_6.87_-125"
+date = "20221124"
+datafilename = "140934_vnasweep_6.87GHz_-1.25e+02pow_25reps"
 datafilepath = Path.cwd() / f"data/wheel/{date}/{datafilename}.hdf5"
 
 # %% READ DATA FROM DATAFILE
@@ -88,22 +88,18 @@ raw_phase_ax.scatter(fs, s21phase, s=2, c="k", label="raw data")
 raw_mag_ax.scatter(fs, s21mag, s=2, c="k", label="raw data")
 s21_ax.scatter(s21real, s21imag, s=2, c="k", label="raw data")
 s21_ax.plot([s21real[0]], [s21imag[0]], "o", ms=8, c="k")
+
+xpts = (points // 8, points // 8)  # for fitting linear background slope
+
 fig  # to show figure inline in the interactive window
 
-# %% (8) LINEAR CABLE DELAY FIT TO GET TAU GUESS
-xpts = (points // 8, points // 8)  # for fitting linear background slope
-ldfit_data, ldfit_params = fit_delay_linear(fs, s21phase, xpts, ax=raw_phase_ax)
-tau_ldf, theta_ldf = ldfit_params["tau"], ldfit_params["theta"]
-print(tau_ldf)
+# %% (8) REMOVE LINEAR BACKGROUND FROM MAGNITUDE DATA
+s21mag = remove_slope(fs, s21mag, xpts)
+raw_mag_ax.clear()
+raw_mag_ax.scatter(fs, s21mag, s=2, c="m")
 fig
 
-# %% (9) REMOVE LINEAR BACKGROUND FROM MAGNITUDE DATA
-#s21mag = remove_slope(fs, s21mag, xpts)
-#raw_mag_ax.clear()
-#raw_mag_ax.scatter(fs, s21mag, s=2, c="m")
-#fig
-
-# %% (10) LORENTZIAN MAGNITUDE FIT TO GET FWHM
+# %% (9) LORENTZIAN MAGNITUDE FIT TO GET FWHM
 mfit_data, mfit_params, mfit_residuals = fit_magnitude(fs, s21mag, xpts, ax=raw_mag_ax)
 fr_mf, fwhm_mf = mfit_params["fr"], abs(mfit_params["fwhm"])
 fri_mf = np.abs(fs - fr_mf).argmin()
@@ -111,44 +107,57 @@ fri_mf = np.abs(fs - fr_mf).argmin()
 mfit_res_ax.scatter(fs, mfit_residuals, s=2, c="k")
 fig
 
-# %% (11) CIRCULAR CABLE DELAY FIT
-nfwhm_cd = 8  # number of FWHM points (out of all points) for circular cable delay fit
+# %% (10) SELECT POINTS FOR CIRCLE FIT
+nfwhm_cd = 6  # number of FWHM points (out of all points) for circle fit
 hchop_cd = int((nfwhm_cd * fwhm_mf) / (2 * fstep))
 li_cd = max(0, fri_mf - hchop_cd)
 ri_cd = min(len(fs) - 1, fri_mf + hchop_cd)
-fs_cd, s21raw_cd = fs[li_cd:ri_cd], s21raw[li_cd:ri_cd]
+fs_cd, s21_cf = fs[li_cd:ri_cd], s21raw[li_cd:ri_cd]
 
-s21nd, cdfit_params, cdfit_res = fit_delay_circular(fs_cd, s21raw_cd, tau_ldf, s21_ax)
+# %% (11) CIRCLE FIT WITHOUT CABLE DELAY CORRECTION
+tau = 0
+radius_cd, center_cd = fit_circle(s21_cf)
+s21_ax.plot([center_cd.real], [center_cd.imag], "o", ms=6, c="g")
+fig
+
+# %% (12) LINEAR CABLE DELAY FIT TO GET TAU GUESS
+ldfit_data, ldfit_params = fit_delay_linear(fs, s21phase, xpts, ax=raw_phase_ax)
+tau_ldf, theta_ldf = ldfit_params["tau"], ldfit_params["theta"]
+print(tau_ldf)
+fig
+
+# %% (13) CIRCULAR CABLE DELAY FIT
+s21_cf, cdfit_params, cdfit_res = fit_delay_circular(fs_cd, s21_cf, tau_ldf, s21_ax)
 radius_cd, center_cd = cdfit_params["radius"], cdfit_params["center"]
 tau = cdfit_params["tau"]
 
 raw_phase_ax.scatter(fs_cd, s21phase[li_cd:ri_cd], s=2, c="b", label="cdfit_data")
 raw_mag_ax.scatter(fs_cd, s21mag[li_cd:ri_cd], s=2, c="b", label="cdfit_data")
-s21_ax.scatter(s21raw_cd.real, s21raw_cd.imag, s=2, c="b", label="cdfit_data")
+s21_ax.scatter(s21_cf.real, s21_cf.imag, s=2, c="b", label="cdfit_data")
 cdfit_res_ax.scatter(fs_cd, cdfit_res, s=2, c="k")
 fig
 
-# %% (12) PHASE FIT
+# %% (13) PHASE FIT
 nfwhm_pf = 3  # number of FWHM points (out of points with no cable delay) for phase fit
 hchop_ph = int((nfwhm_pf * fwhm_mf) / (2 * fstep))
 fri_cd = np.abs(fs_cd - fr_mf).argmin()
 li_ph = max(0, fri_cd - hchop_ph)
 ri_ph = min(len(fs_cd) - 1, fri_cd + hchop_ph)
-fs_pf, s21nd_pf = fs_cd[li_ph:ri_ph], s21nd[li_ph:ri_ph]
+fs_pf, s21_pf = fs_cd[li_ph:ri_ph], s21_cf[li_ph:ri_ph]
 
-s21phaseo = np.unwrap(np.angle((s21nd_pf - center_cd)))
+s21phaseo = np.unwrap(np.angle((s21_pf - center_cd)))
 Ql_g = fr_mf / fwhm_mf
 pf_pts = 2 * hchop_ph // nfwhm_pf  # number of extreme points to guess y-offset
 pfit_data, pfit_params, pfit_res = fit_phase(fs_pf, s21phaseo, pf_pts, Ql_g, pfit_ax)
 fr, theta_pf = pfit_params["fr"], pfit_params["theta"]
 
 pfit_ax.scatter(fs_pf, s21phaseo, s=2, c="g", label="data")
-s21_ax.scatter(s21nd_pf.real, s21nd_pf.imag, s=2, c="g", label="pfit_data")
+s21_ax.scatter(s21_pf.real, s21_pf.imag, s=2, c="g", label="pfit_data")
 pfit_res_ax.scatter(fs_pf, pfit_res, s=2, c="k")
 fig
 
 # %% (13) FIND OFF-RESONANT POINT AND CALIBRATE S21
-s21c, rp, orp = remove_background(s21nd_pf, theta_pf, center_cd, radius_cd, ax=s21_ax)
+s21c, rp, orp = remove_background(s21_pf, theta_pf, center_cd, radius_cd, ax=s21_ax)
 fig
 
 # %% (14) SHOW CALIBRATED S21
@@ -204,11 +213,13 @@ with open(str(savefilepath) + ".txt", "w+") as f:
 
     f.write("Detailed results\n")
     f.write("\n")
+    
+    if tau:
 
-    f.write("Linear phase fit to estimate cable delay\n")
-    f.write(f"Tau: {tau_ldf:.3e}\n")
-    f.write(f"Theta: {ldfit_params['theta']:.3}\n")
-    f.write("\n")
+        f.write("Linear phase fit to estimate cable delay\n")
+        f.write(f"Tau: {tau_ldf:.3e}\n")
+        f.write(f"Theta: {ldfit_params['theta']:.3}\n")
+        f.write("\n")
 
     f.write("Lorentzian fit to get FWHM to select data for subsequent fitting\n")
     f.write(f"Full width half maxmimum: {fwhm_mf:.3e}\n")
@@ -218,10 +229,10 @@ with open(str(savefilepath) + ".txt", "w+") as f:
     f.write(f"Impedance mismatch angle: {mfit_params['phi']:.3}\n")
     f.write("\n")
 
-    f.write("Circle fit to remove cable delay\n")
+    f.write("Circle fit (with option to remove cable delay)\n")
     f.write(f"Number of FWHM selected for fitting: {nfwhm_cd}\n")
     f.write(f"Number of points selected for fitting: {len(fs_cd)}\n")
-    f.write(f"Tau: {cdfit_params['tau']:.3e}\n")
+    f.write(f"Tau: {tau:.3e}\n")
     f.write(f"Circle center: {center_cd:.3}\n")
     f.write(f"Circle radius: {radius_cd:.3}\n")
     f.write("\n")
