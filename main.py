@@ -25,38 +25,37 @@ else:
 tau = 0
 
 # off-resonant point
-orp = 0.07109979+0.1113638j
+orp = 0.001707529+0.0102692j
 
 # [left:right] to select data for phase fit
-pfit_slice = slice(85, 311)
-start, stop = pfit_slice.start, pfit_slice.stop
+#pfit_slice = slice(159, 243)
+#start, stop = pfit_slice.start, pfit_slice.stop
 
 # %% (4) DATA LOAD DETAILS
-dataset_name = "W3_10_6.87_-170"
-date = "20221124"
-datafilename = "160006_vnasweep_6.87GHz_-1.7e+02pow_1500reps"
+dataset_name = "W8_04_6.89_-140"
+date = "20230319"
+datafilename = "212826_vnasweep_6.88608e+09_-20pow_500reps"
 datafilepath = Path.cwd() / f"data/wheel/{date}/{datafilename}.hdf5"
+attenuation = 120  # dB
 
 # %% (5) READ DATA FROM DATAFILE
 with h5py.File(datafilepath, "r") as file:
     fs = file["data"]["frequency"][...]
-    s21real = np.average(file["data"]["s21_imag"][...], axis=0)
-    s21imag = np.average(file["data"]["s21_real"][...], axis=0)
+    s21real = np.average(file["data"]["s21_real"][...], axis=0)
+    s21imag = np.average(file["data"]["s21_imag"][...], axis=0)
     reps = file.attrs["repetitions"]
-    power = file.attrs["powers"][0] - file.attrs["attenuation"][0]
+    power = file.attrs["powers"][0] - attenuation
 fstep = np.average(np.diff(fs))
 points = len(fs)  # number of swept data points
 
 # %% (6) TRANSFORM RAW DATA
 s21raw = s21real + 1j * s21imag
-s21raw_pf, fs_pf = s21raw[pfit_slice], fs[pfit_slice]
-s21cal = (s21raw_pf * np.exp(2j * np.pi * fs_pf * -tau)) / orp
 s21mag = np.abs(s21raw)
 s21phase = np.unwrap(np.angle(s21raw))
 
 # %% (7) PREPARE PLOT
 fig = plt.figure(tight_layout=True, figsize=(16, 16))
-fig.suptitle(f"{dataset_name} [{fstep:.2e} step, {points = }, {power}dBm, {reps = }]")
+fig.suptitle(f"{dataset_name} [{fstep:.2e} step, {points = }, {reps = }, {power = }]")
 gs = GridSpec(13, 6, figure=fig)
 
 # raw phase plot
@@ -100,29 +99,21 @@ circlefit_ax.grid(visible=True, alpha=0.5)
 circlefit_res_ax = fig.add_subplot(gs[10:12, 3:])
 circlefit_res_ax.set(title="Circle fit residuals")
 
-# %% (8) PLOT RAW AND CALIBRATED DATA
+# %% (8) PLOT RAW DATA
 raw_phase_ax.scatter(fs, s21phase, s=2, c="k", label="raw data")
-raw_phase_ax.scatter(fs_pf, s21phase[pfit_slice], s=2, c="g", label="pfit data")
-
 raw_mag_ax.scatter(fs, s21mag, s=2, c="k", label="raw data")
-raw_mag_ax.scatter(fs_pf, s21mag[pfit_slice], s=2, c="g", label="pfit data")
-
 s21_ax.plot([s21real[0]], [s21imag[0]], "o", ms=8, c="k")
 s21_ax.scatter(s21real, s21imag, s=2, c="k", label="raw data")
-s21_ax.scatter(s21raw_pf.real, s21raw_pf.imag, s=2, c="g", label="pfit data")
-
-circlefit_ax.scatter(s21cal.real, s21cal.imag, s=2, c="g", label="data")
-circlefit_ax.plot([s21cal.real[0]], [s21cal.imag[0]], "o", ms=8, c="g")
 
 xpts = (points // 8, points // 8)  # for fitting linear background slope
 
 fig  # to show figure inline in the interactive window
 
 # %% (9) REMOVE LINEAR BACKGROUND FROM MAGNITUDE DATA
-#s21mag = remove_slope(fs, s21mag, xpts)
-#raw_mag_ax.clear()
-#raw_mag_ax.scatter(fs, s21mag, s=2, c="m")
-#fig
+# s21mag = remove_slope(fs, s21mag, xpts)
+# raw_mag_ax.clear()
+# raw_mag_ax.scatter(fs, s21mag, s=2, c="m")
+# fig
 
 # %% (10) LORENTZIAN MAGNITUDE FIT TO GET FWHM
 mfit_data, mfit_params, mfit_residuals = fit_magnitude(fs, s21mag, xpts, ax=raw_mag_ax)
@@ -132,7 +123,28 @@ fri_mf = np.abs(fs - fr_mf).argmin()
 mfit_res_ax.scatter(fs, mfit_residuals, s=2, c="k")
 fig
 
-# %% (11) CIRCLE FIT TO FIND CENTER AND RADIUS OF CALIBRATED S21
+# %% (11) SELECT AND PLOT DATA FOR PHASE AND CIRCLE FIT
+nfwhm_pf = 3  # number of FWHM points for phase fit
+hchop_ph = int((nfwhm_pf * fwhm_mf) / (2 * fstep))
+start = max(0, fri_mf - hchop_ph)
+stop = min(len(fs) - 1, fri_mf + hchop_ph)
+pfit_slice = slice(start, stop)
+
+s21raw_pf, fs_pf = s21raw[pfit_slice], fs[pfit_slice]
+s21cal = (s21raw_pf * np.exp(2j * np.pi * fs_pf * -tau)) / orp
+
+raw_phase_ax.scatter(fs_pf, s21phase[pfit_slice], s=2, c="g", label="pfit data")
+
+raw_mag_ax.scatter(fs_pf, s21mag[pfit_slice], s=2, c="g", label="pfit data")
+
+s21_ax.scatter(s21raw_pf.real, s21raw_pf.imag, s=2, c="g", label="pfit data")
+
+circlefit_ax.scatter(s21cal.real, s21cal.imag, s=2, c="g", label="data")
+circlefit_ax.plot([s21cal.real[0]], [s21cal.imag[0]], "o", ms=8, c="g")
+
+fig
+
+# %% (12) CIRCLE FIT TO FIND CENTER AND RADIUS OF CALIBRATED S21
 radius, center = fit_circle(s21cal)
 cx, cy = center.real, center.imag
 circlefit_residuals = (radius - np.abs(s21cal - center)) ** 2
@@ -143,10 +155,12 @@ circle = plt.Circle((cx, cy), radius, ec="r", ls="--", fill=False, label="fit")
 circlefit_ax.add_patch(circle)
 fig
 
-# %% (12) FIND OFF-RESONANT POINT AFTER A PHASE FIT
+# %% (13) FIND OFF-RESONANT POINT AFTER A PHASE FIT
 s21phaseo = np.unwrap(np.angle((s21cal - center)))
 Ql_g = fr_mf / fwhm_mf
-pfit_data, pfit_params, pfit_res = fit_phase(fs_pf, s21phaseo, start, Ql_g, pfit_ax)
+pfit_data, pfit_params, pfit_res = fit_phase(
+    fs_pf, s21phaseo, start, Ql_g, fr_mf, pfit_ax
+)
 fr, Ql, theta_pf = pfit_params["fr"], pfit_params["Ql"], pfit_params["theta"]
 _, rp_cf, orp_cf = remove_background(s21cal, theta_pf, center, radius, ax=circlefit_ax)
 
@@ -154,13 +168,13 @@ pfit_ax.scatter(fs_pf, s21phaseo, s=2, c="g", label="data")
 pfit_res_ax.scatter(fs_pf, pfit_res, s=2, c="k")
 fig
 
-# %% (13) EXTRACT PHI, |Qc|, Qi
+# %% (14) EXTRACT PHI, |Qc|, Qi
 phi = -np.arcsin((orp_cf.imag - center.imag) / radius)
 Qc = Ql / (nports * radius * np.exp(-1j * phi))
 absQc = np.abs(Qc)
 Qi = 1 / ((1 / Ql) - (1 / Qc.real))
 
-# %% (14) ADD TEXT TO FIGURE AND ACTIVATE LEGEND FOR ALL AXES
+# %% (15) ADD TEXT TO FIGURE AND ACTIVATE LEGEND FOR ALL AXES
 raw_phase_ax.legend(loc="lower right")
 raw_mag_ax.legend(loc="lower right")
 s21_ax.legend()
@@ -174,7 +188,7 @@ fig.text(0.8, 0.025, text2)
 
 fig
 
-# %% (15) SAVE CALIBRATION RESULTS
+# %% (16) SAVE CALIBRATION RESULTS
 savefolder = Path.cwd() / "results"
 savefilepath = savefolder / dataset_name
 with open(str(savefilepath) + ".txt", "w+") as f:
@@ -196,13 +210,14 @@ with open(str(savefilepath) + ".txt", "w+") as f:
     f.write(f"Internal quality factor: {Qi:.3e}\n")
     f.write(f"Absolute value of coupling quality factor: {absQc:.3e}\n")
     f.write(f"Impedance mismatch angle phi: {phi:.3}\n")
+    f.write(f"Phase fit data selection: [{start}:{stop}]\n")
 
     f.write("\n")
 
     f.write("Calibration parameters\n")
     f.write(f"Cable delay: {tau:.7e}\n")
     f.write(f"Off-resonant point: {orp:.7}\n")
-    f.write(f"Phase fit data selection: [{start}:{stop}]\n")
+    f.write(f"Number of FWHM for phase fit: {nfwhm_pf}\n")
     f.write("\n")
 
     f.write("Lorentzian fit to get Ql guess\n")
