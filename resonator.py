@@ -130,7 +130,7 @@ def fit_magnitude(fs, s21mag, npoints, ax=None):
     return best_fit, best_values, result.residual
 
 
-def fit_phase(fs, s21phase, npoints, Ql_guess=None, ax=None):
+def fit_phase(fs, s21phase, npoints, Ql_guess=None, fr_guess=None, ax=None):
     """
     Fit resonator phase data to arctan lineshape
     fs: array of probe frequencies (independent variables)
@@ -144,7 +144,8 @@ def fit_phase(fs, s21phase, npoints, Ql_guess=None, ax=None):
     is_shape_s = s21phase[0] < s21phase[-1]
     # determine reasonable initial guesses for fit parameters
     # fr guess is the location of max gradient of s21phase
-    fr_guess = fs[np.argmax(np.gradient(s21phase))]
+    if fr_guess is None:
+        fr_guess = fs[np.argmax(np.gradient(s21phase))]
     if Ql_guess is None:
         # Ql guess is the geometric mean of the max and min possible Ql
         Ql_guess = (fr_guess / (max(fs) - min(fs))) * np.sqrt(len(fs))
