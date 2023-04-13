@@ -13,11 +13,11 @@ from delayfit import fit_delay_circular, fit_delay_linear
 from resonator import fit_magnitude, fit_phase, remove_background, remove_slope
 
 # %% DATA LOAD DETAILS
-dataset_name = "W8_04_6.89_-110"
-date = "20230319"
-datafilename = "182910_vnasweep_6.88608e+09_10pow_100reps"
+dataset_name = "W10_03_5.96_-90"
+date = "20230407"
+datafilename = "161141_vnasweep_5.96e+09_10pow_50reps"
 datafilepath = Path.cwd() / f"data/wheel/{date}/{datafilename}.hdf5"
-attenuation = 120  # in dB, includes attenuation in and out of fridge
+attenuation = 100  # in dB, includes attenuation in and out of fridge
 
 # %% READ DATA FROM DATAFILE
 with h5py.File(datafilepath, "r") as file:

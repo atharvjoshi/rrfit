@@ -25,18 +25,18 @@ else:
 tau = 0
 
 # off-resonant point
-orp = 0.001707529+0.0102692j
+orp = -1.447659e-05+0.00183064j
 
 # [left:right] to select data for phase fit
 #pfit_slice = slice(159, 243)
 #start, stop = pfit_slice.start, pfit_slice.stop
 
 # %% (4) DATA LOAD DETAILS
-dataset_name = "W8_04_6.89_-140"
-date = "20230319"
-datafilename = "212826_vnasweep_6.88608e+09_-20pow_500reps"
+dataset_name = "W10_03_5.96_-130"
+date = "20230408"
+datafilename = "054059_vnasweep_5.96e+09_-30pow_500reps"
 datafilepath = Path.cwd() / f"data/wheel/{date}/{datafilename}.hdf5"
-attenuation = 120  # dB
+attenuation = 100  # dB
 
 # %% (5) READ DATA FROM DATAFILE
 with h5py.File(datafilepath, "r") as file:
