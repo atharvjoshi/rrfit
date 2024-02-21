@@ -8,9 +8,9 @@ from matplotlib.gridspec import GridSpec
 import matplotlib.pyplot as plt
 import numpy as np
 
-from circlefit import fit_circle
-from delayfit import fit_delay_circular, fit_delay_linear
-from resonator import fit_magnitude, fit_phase, remove_background, remove_slope
+from rrfit.circlefit import fit_circle
+from rrfit.delayfit import fit_delay_circular, fit_delay_linear
+from rrfit.resonator import fit_magnitude, fit_phase, remove_background, remove_slope
 
 # %% DATA LOAD DETAILS
 dataset_name = "W10_03_5.96_-90"

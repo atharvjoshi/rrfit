@@ -4,7 +4,7 @@ import lmfit
 import numpy as np
 import matplotlib.pyplot as plt
 
-from circlefit import fit_circle
+from rrfit.circlefit import fit_circle
 
 
 def fit_delay_linear(fs, s21phase, npoints, ax=None):

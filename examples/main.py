@@ -8,8 +8,8 @@ from matplotlib.gridspec import GridSpec
 import matplotlib.pyplot as plt
 import numpy as np
 
-from circlefit import fit_circle
-from resonator import fit_magnitude, fit_phase, remove_background, remove_slope
+from rrfit.circlefit import fit_circle
+from rrfit.resonator import fit_magnitude, fit_phase, remove_background, remove_slope
 
 # %% (2) SET MEASUREMENT MODE - REFLECTION OR TRANSMISSION
 nports = 1  # 1 for reflection, 2 for transmission, other values not allowed
