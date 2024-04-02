@@ -2,6 +2,7 @@
 Algebraic circle fit for analyzing complex S21 data of superconducting resonators
 Adapted from Probst et al 2015.
 """
+
 from itertools import product
 import numpy as np
 from scipy import optimize
@@ -26,11 +27,9 @@ def fit_circle(s21):
 
     # calculate the matrix of moments M based on the scaled data
     M = get_moments(scaleddata)
-    #print(f"{M = }")
 
     # calculate the eigenvalue l that solves characteristic polynomial det(M - mB) = 0
     l = solve_charpoly(M)
-    #print(f"{l = }")
 
     # adjust a subset of the moments using the computed eigenvalue l
     M[3][0] = M[0][3] = M[3][0] + 2 * l
@@ -39,11 +38,10 @@ def fit_circle(s21):
     # find the eigenvector P = [A B C D].t corresponding to l
     P = get_circle_coeffs(M)
     A, B, C, D = P.tolist()
-    #print(f"{P = }")
 
     # extract radius and center coordinates of the fitted circle from P
     # re-scale and re-translate the radius and center before returning them
-    radius = (np.sqrt(B ** 2 + C ** 2 - 4 * A * D) / (2 * abs(A))) * abs(scalar)
+    radius = (np.sqrt(B**2 + C**2 - 4 * A * D) / (2 * abs(A))) * abs(scalar)
     center = ((-B / (2 * A)) + 1j * (-C / (2 * A))) * scalar + translator
 
     return radius, center
@@ -98,14 +96,13 @@ def solve_charpoly(M):
     """
     # calculate the coefficients of charpoly from M
     k0, k1, k2, k3, k4 = get_charpoly_coeffs(M)
-    #print(f"{k0 = }, {k1 = }, {k2 = }, {k3 = }, {k4 = }")
 
     # define the charpoly and its derivative
     def charpoly(l):
-        return k0 + k1 * l + k2 * l ** 2 + k3 * l ** 3 + k4 * l ** 4
+        return k0 + k1 * l + k2 * l**2 + k3 * l**3 + k4 * l**4
 
     def dcharpoly(l):
-        return k1 + 2 * k2 * l + 3 * k3 * l ** 2 + 4 * k4 * l ** 3
+        return k1 + 2 * k2 * l + 3 * k3 * l**2 + 4 * k4 * l**3
 
     l = optimize.newton(charpoly, 0.0, dcharpoly)
     return l
@@ -128,18 +125,18 @@ def get_charpoly_coeffs(M):
     a, b, c, d, e = M[0][0], M[0][1], M[0][2], M[0][3], M[1][1]
     f, g, h, i, j = M[1][2], M[1][3], M[2][2], M[2][3], M[3][3]
     k0 = (
-        (b ** 2 * (i ** 2 - h * j) + c ** 2 * (g ** 2 - e * j))
-        + (f ** 2 * (d ** 2 - a * j) + e * h * (a * j - d ** 2))
+        (b**2 * (i**2 - h * j) + c**2 * (g**2 - e * j))
+        + (f**2 * (d**2 - a * j) + e * h * (a * j - d**2))
         + (2 * b * f * (c * j - d * i) + 2 * c * d * (e * i - f * g))
-        + (2 * b * g * (d * h - c * i) + a * (2 * f * g * i - e * i ** 2 - g ** 2 * h))
+        + (2 * b * g * (d * h - c * i) + a * (2 * f * g * i - e * i**2 - g**2 * h))
     )
     k1 = (
-        a * ((g ** 2 - e * j) + (i ** 2 - h * j))
-        + d * ((d * (e + h) - (b * g + c * i)) + 4 * (f ** 2 - e * h))
+        a * ((g**2 - e * j) + (i**2 - h * j))
+        + d * ((d * (e + h) - (b * g + c * i)) + 4 * (f**2 - e * h))
         + c * ((c * j - i * d) + 4 * (e * i - g * f))
         + b * ((b * j - d * g) + 4 * (g * h - f * i))
     )
-    k2 = (a * j - d ** 2) + 4 * ((e * d - c * i) + (h * d - b * g) + (f ** 2 - h * e))
+    k2 = (a * j - d**2) + 4 * ((e * d - c * i) + (h * d - b * g) + (f**2 - h * e))
     k3 = 4 * (e + h - d)
     k4 = -4.0
     return k0, k1, k2, k3, k4
