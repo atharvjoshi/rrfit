@@ -3,17 +3,41 @@
 from lmfit import Model
 import numpy as np
 
-from rrfit.fitfns import asymmetric_lorentzian
+from rrfit.fitfns import asymmetric_lorentzian, cable_delay_linear, centered_phase
 
 
-class S21LogMagModel(Model):
+class FitModel(Model):
+    """thin wrapper around lmfit's Model class to simplify guessing and fitting"""
+
+    def __init__(self, fitfn, *args, **kwargs):
+        """ """
+        name = self.__class__.__name__
+        super().__init__(func=fitfn, name=name, *args, **kwargs)
+
+    def fit(self, data, x, params=None, verbose=True, **kwargs):
+        """ """
+        if params is None:
+            params = self.guess(data, x)
+        result = super().fit(data, params=params, x=x, **kwargs)
+        if verbose:
+            print(result.fit_report())
+        return result
+
+    def make_params(self, guesses: dict = None, **kwargs):
+        """ """
+        if guesses is not None:
+            for param, hint in guesses.items():
+                self.set_param_hint(param, **hint)
+        return super().make_params(**kwargs)
+
+
+class S21LogMagModel(FitModel):
     """ """
 
     def __init__(self, *args, **kwargs):
         """ """
         fitfn = asymmetric_lorentzian
-        name = self.__class__.__name__
-        super().__init__(fitfn, name=name, *args, **kwargs)
+        super().__init__(fitfn, *args, **kwargs)
 
     def guess(self, data, f):
         """ """
@@ -50,21 +74,69 @@ class S21LogMagModel(Model):
             "fr": {"value": fr_guess, "min": f[0], "max": f[-1]},
             "fwhm": {"value": fwhm_guess, "min": f[1] - f[0], "max": f[-1] - f[0]},
         }
-        for param, hint in guesses.items():
-            self.set_param_hint(param, **hint)
-        return self.make_params()
+        return self.make_params(guesses=guesses)
 
-    def fit(self, data, f, params=None, verbose=True, **kwargs):
-        """ """
-        if params is None:
-            params = self.guess(data, f)
-        result = super().fit(data, params=params, f=f, **kwargs)
-        if verbose:
-            print(result.fit_report())
-        return result
-
-    def post_fit(self, result, plot=True):
+    def post_fit(self, result):
         """Calculate Ql, absQc, and Qi from fit result best values and show plot"""
         result.params.add("Ql", expr="fr / fwhm")
         result.params.add("absQc", expr="abs(Ql / height)")
         result.params.add("Qi", expr="1 / ((1 / Ql) - (cos(phi) / absQc))")
+
+
+class S21CenteredPhaseModel(FitModel):
+    """ """
+
+    def __init__(self, *args, **kwargs):
+        """ """
+        fitfn = centered_phase
+        super().__init__(fitfn, *args, **kwargs)
+
+    def guess(self, data, f):
+        """ """
+        # guess resonance frequency to lie at the peak of the derivative of the data
+        absdy = np.abs(np.diff(data, prepend=data[0]))
+        fr_i = absdy.argmax()
+        fr_guess = f[fr_i]
+
+        # guess theta offset based on extreme left and right off-resonant data
+        xp = len(f) // 6
+        l_or, r_or = np.average(data[:xp]), np.average(data[-xp:])
+        theta_guess = (l_or + r_or) / 2
+
+        # guess Ql based on the linewidth of the derivative of the data
+        hamp = absdy.max() / 2
+        l, r = absdy[:fr_i], absdy[fr_i:]
+        fwhm_guess = f[fr_i + (r - hamp).argmin()] - f[(l - hamp).argmin()]
+        Ql_guess = fr_guess / fwhm_guess
+        Ql_sign = -1 if data[0] < data[-1] else 1
+
+        # set bounds on the guesses and set them as the model's parameter hints
+        guesses = {
+            "theta": {"value": theta_guess},
+            "fr": {"value": fr_guess, "min": f[0], "max": f[-1]},
+            "Ql": {
+                "value": Ql_sign * Ql_guess,
+                "min": Ql_sign * (fr_guess / (f[1] - f[0])),
+                "max": Ql_sign * (fr_guess / (f[-1] - f[0])),
+            },
+        }
+        return self.make_params(guesses=guesses)
+
+
+class S21PhaseLinearModel(FitModel):
+    """Fit unwrapped s21 phase to a line to extract cable delay"""
+
+    def __init__(self, *args, **kwargs):
+        """ """
+        fitfn = cable_delay_linear
+        super().__init__(fitfn, *args, **kwargs)
+
+    def guess(self, data, f):
+        """ """
+        tau_guess = ((data[-1] - data[0]) / (f[-1] - f[0])) / (2 * np.pi)
+        theta_guess = np.average(data - 2 * np.pi * f * tau_guess)
+        guesses = {
+            "theta": {"value": theta_guess},
+            "tau": {"value": tau_guess},
+        }
+        return self.make_params(guesses=guesses)
