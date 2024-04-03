@@ -17,7 +17,7 @@ def fit_cable_delay(s21_phase, f, exclude=None):
     # fit all data to a linear model
     if exclude is None:
         result = model.fit(s21_phase, f)
-        result.plot(datafmt=".", show_init=True)
+        #result.plot(datafmt=".", show_init=True)
         return result.best_values["tau"]
 
     # fit left-most and right-most data points each to a linear model
