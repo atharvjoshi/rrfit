@@ -3,21 +3,21 @@
 import numpy as np
 
 
-def rr_s21(fs, nports, fr, Ql, Qc, phi=0, a=1, alpha=0, tau=0):
+def rr_s21_hanger(x, fr, Ql, absQc, phi=0, a=1, alpha=0, tau=0):
     """
-    complex s21 model for resonators
-    fs: array of probe frequencies (independent variables)
-    nports: set to 1 for reflection and 2 for transmission measurements (constant)
+    complex s21 model for resonators in hanger/transmission mode
+    x: array of probe frequencies (independent variables)
     fr: resonance frequency
     Ql: loaded (total) quality factor
-    Qc: coupling quality factor
+    absQc: absolute value of the coupling quality factor
     phi: phase due to circuit asymmetry
     a: net amplitude loss/gain due to measurement line
     alpha: net phase shift due to measurement line
     tau: frequency-dependent phase shift due to finite measurement line length
     """
-    background = a * np.exp(-1j * (2 * np.pi * fs * tau + alpha))
-    resonator = (Ql / Qc * np.exp(1j * phi)) / (1 + 2j * Ql * (fs / fr - 1))
+    nports = 2
+    background = a * np.exp(-1j * (2 * np.pi * x * tau + alpha))
+    resonator = (Ql / absQc * np.exp(1j * phi)) / (1 + 2j * Ql * (x / fr - 1))
     return background * (1 - (2 // nports) * resonator)
 
 
@@ -47,14 +47,14 @@ def cable_delay_linear(x, tau, theta):
     return 2 * np.pi * x * tau + theta
 
 
-def centered_phase(x, fr, Ql, theta, sign):
+def centered_phase(x, fr, Ql, theta, sign=1):
     """
     Arctan fit for resonator phase response around complex plane origin
     x: array of probe frequencies (independent variables)
     fr: resonant frequency
     Ql: loaded (total) quality factor
-    theta: arbitrary ohase y-offset
-    sign: whether
+    theta: arbitrary phase y-offset
+    sign: whether the phase response is S shaped (-1) or not (+1) - fixed
     note that np.arctan return real values in the interval [-pi/2, pi/2]
     """
-    return theta + 2 * np.arctan(2 * Ql * (1 - x / fr))
+    return theta + 2 * np.arctan(2 * Ql * sign * (1 - x / fr))
