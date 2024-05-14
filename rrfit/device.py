@@ -25,6 +25,8 @@ class Device:
     def __init__(self, name):
         """ """
         self.name = name
+        self.spr = None
+        self.pitch = None
         self.traces: list[Trace] = []
         self.calib_trace: Trace = None  # trace used for calibrating cable delay
 
