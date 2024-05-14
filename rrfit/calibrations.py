@@ -7,7 +7,7 @@ from rrfit.models import S21PhaseLinearModel, S21CenteredPhaseModel
 from rrfit.circlefit import fit_circle
 
 
-def fit_cable_delay(s21_phase, f, exclude=None):
+def fit_cable_delay(s21_phase, f, exclude=None, plot=False):
     """
     exclude tuple(int, int): select data to exclude from cable delay fit
     """
@@ -17,7 +17,8 @@ def fit_cable_delay(s21_phase, f, exclude=None):
     # fit all data to a linear model
     if exclude is None:
         result = model.fit(s21_phase, f)
-        #result.plot(datafmt=".", show_init=True)
+        if plot:
+            result.plot(datafmt=".", show_init=True)
         return result.best_values["tau"]
 
     # fit left-most and right-most data points each to a linear model
@@ -34,19 +35,25 @@ def fit_cable_delay(s21_phase, f, exclude=None):
     rresult = model.fit(rphase, rf)
 
     ltau, rtau = lresult.best_values["tau"], rresult.best_values["tau"]
+    tau = (ltau + rtau) / 2
 
-    # plt.scatter(f, s21_phase, s=2, c="k", label="data")
-    # plt.plot(lf, lresult.best_fit, c="r", label="left fit")
-    # plt.plot(rf, rresult.best_fit, c="r", label="right fit")
-    # plt.legend()
+    if plot:
+        plt.scatter(f, s21_phase, s=2, c="k", label="data")
+        plt.plot(lf, lresult.best_fit, c="r", label="left fit")
+        plt.plot(rf, rresult.best_fit, c="r", label="right fit")
+        plt.xlabel("Frequency (Hz)")
+        plt.ylabel("arg(S21) (rad)")
+        plt.title(f"Fitted cable delay: {tau:.3e}s")
+        plt.legend()
+        plt.show()
 
-    return (ltau + rtau) / 2
+    return tau
 
 
-def fit_background(s21, f):
+def fit_background(s21, f, discont=None):
     """ """
     radius, center = fit_circle(s21)
-    s21cphase = np.unwrap(np.angle((s21 - center)))
+    s21cphase = np.unwrap(np.angle((s21 - center)), discont=discont)
 
     model = S21CenteredPhaseModel()
     result = model.fit(s21cphase, f)
@@ -56,27 +63,27 @@ def fit_background(s21, f):
     rp = center + radius * np.cos(beta) + 1j * radius * np.sin(beta)
     orp = center + (center - rp)
 
-    # result.plot(
-    #    datafmt=".",
-    #    show_init=True,
-    #    xlabel="Frequency (MHz)",
-    #    ylabel="arg(S21) (rad)",
-    #    data_kws={"ms": 3, "c": "k"},
-    #    fit_kws={"lw": 1.5, "c": "r"},
-    #    init_kws={"lw": 1.5, "c": "g"},
-    # )
-
-    # plt.cla()
-    # plt.gca().set(xlabel="I", ylabel="Q", title="Complex S21")
-    # plt.gca().set_aspect("equal", "datalim")
-    # plt.scatter(s21.real, s21.imag, s=2, c="g", label="data")
-    # plt.plot([orp.real], [orp.imag], "o", ms=8, c="k")
-    # plt.plot([rp.real], [rp.imag], "o", ms=8, c="r")
-    # plt.plot([center.real], [center.imag], "o", ms=8, c="g")
-    # circle = plt.Circle(
-    #    (center.real, center.imag), radius, ec="r", ls="--", fill=False, label="fit"
-    # )
-    # plt.gca().add_patch(circle)
-    # plt.legend()
+    #result.plot(
+    #   datafmt=".",
+    #   show_init=True,
+    #   xlabel="Frequency (Hz)",
+    #   ylabel="arg(S21) (rad)",
+    #   data_kws={"ms": 3, "c": "k"},
+    #   fit_kws={"lw": 1.5, "c": "r"},
+    #   init_kws={"lw": 1.5, "c": "g"},
+    #)
+    
+    #plt.cla()
+    #plt.gca().set(xlabel="I", ylabel="Q", title="Complex S21")
+    #plt.gca().set_aspect("equal", "datalim")
+    #plt.scatter(s21.real, s21.imag, s=2, c="g", label="data")
+    #plt.plot([orp.real], [orp.imag], "o", ms=8, c="k")
+    #plt.plot([rp.real], [rp.imag], "o", ms=8, c="r")
+    #plt.plot([center.real], [center.imag], "o", ms=8, c="g")
+    #circle = plt.Circle(
+    #   (center.real, center.imag), radius, ec="r", ls="--", fill=False, label="fit"
+    #)
+    #plt.gca().add_patch(circle)
+    #plt.legend()
 
     return orp
