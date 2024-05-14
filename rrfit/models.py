@@ -3,7 +3,12 @@
 from lmfit import Model
 import numpy as np
 
-from rrfit.fitfns import asymmetric_lorentzian, cable_delay_linear, centered_phase
+from rrfit.fitfns import (
+    asymmetric_lorentzian,
+    cable_delay_linear,
+    centered_phase,
+    rr_s21_hanger,
+)
 
 
 class FitModel(Model):
@@ -14,7 +19,7 @@ class FitModel(Model):
         name = self.__class__.__name__
         super().__init__(func=fitfn, name=name, *args, **kwargs)
 
-    def fit(self, data, x, params=None, verbose=True, **kwargs):
+    def fit(self, data, x, params=None, verbose=False, **kwargs):
         """ """
         if params is None:
             params = self.guess(data, x)
@@ -29,6 +34,22 @@ class FitModel(Model):
             for param, hint in guesses.items():
                 self.set_param_hint(param, **hint)
         return super().make_params(**kwargs)
+
+
+class S21Model(FitModel):
+    """
+    s21 fitting function (no background)
+    TODO write guess fn
+    """
+
+    def __init__(self, *args, **kwargs):
+        """ """
+        fitfn = rr_s21_hanger
+        super().__init__(fitfn, *args, **kwargs)
+
+    def post_fit(self, result):
+        """Calculate Ql, absQc, and Qi from fit result best values and show plot"""
+        result.params.add("Qi", expr="1 / ((1 / Ql) - (cos(phi) / absQc))")
 
 
 class S21LogMagModel(FitModel):
@@ -106,19 +127,28 @@ class S21CenteredPhaseModel(FitModel):
         # guess Ql based on the linewidth of the derivative of the data
         hamp = absdy.max() / 2
         l, r = absdy[:fr_i], absdy[fr_i:]
-        fwhm_guess = f[fr_i + (r - hamp).argmin()] - f[(l - hamp).argmin()]
+        lhamp_i = np.abs((l - hamp)).argmin()
+        rhamp_i = fr_i + np.abs((r - hamp)).argmin()
+        fwhm_guess = f[rhamp_i] - f[lhamp_i]
         Ql_guess = fr_guess / fwhm_guess
-        Ql_sign = -1 if data[0] < data[-1] else 1
+        sign = -1 if data[0] < data[-1] else 1
+
+        #print(f"{hamp = }")
+        #print(f"{len(l) = }, {len(r) = }")
+        #print(f"{rhamp_i = }, {lhamp_i = }")
+        #print(f"{fwhm_guess = }")
+        #print(f"{Ql_guess = }")
 
         # set bounds on the guesses and set them as the model's parameter hints
         guesses = {
             "theta": {"value": theta_guess},
             "fr": {"value": fr_guess, "min": f[0], "max": f[-1]},
             "Ql": {
-                "value": Ql_sign * Ql_guess,
-                "min": Ql_sign * (fr_guess / (f[1] - f[0])),
-                "max": Ql_sign * (fr_guess / (f[-1] - f[0])),
+                "value": Ql_guess,
+                "min": fr_guess / (f[-1] - f[0]),
+                "max": fr_guess / (f[1] - f[0]),
             },
+            "sign": {"value": sign, "vary": False},
         }
         return self.make_params(guesses=guesses)
 
