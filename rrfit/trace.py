@@ -103,8 +103,6 @@ class Trace:
 
         s21_canonical = self.remove_background(discont=discont)
 
-        ## circle and phase fit to extract resonator parameters
-        radius, center = fit_circle(s21_canonical)
 
         s21_centered_phase = np.unwrap(
             np.angle((s21_canonical - center)), discont=discont
