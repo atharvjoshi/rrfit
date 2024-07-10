@@ -1,4 +1,4 @@
-""" independent data argument must be called 'x' """
+""" """
 
 import numpy as np
 

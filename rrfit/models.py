@@ -52,6 +52,25 @@ class S21Model(FitModel):
         result.params.add("Qi", expr="1 / ((1 / Ql) - (cos(phi) / absQc))")
 
 
+class S21PhaseLinearModel(FitModel):
+    """Fit unwrapped s21 phase to a line to extract cable delay"""
+
+    def __init__(self, *args, **kwargs):
+        """ """
+        fitfn = cable_delay_linear
+        super().__init__(fitfn, *args, **kwargs)
+
+    def guess(self, data, f):
+        """ """
+        tau_guess = ((data[-1] - data[0]) / (f[-1] - f[0])) / (2 * np.pi)
+        theta_guess = np.average(data - 2 * np.pi * f * tau_guess)
+        guesses = {
+            "theta": {"value": theta_guess},
+            "tau": {"value": tau_guess},
+        }
+        return self.make_params(guesses=guesses)
+
+
 class S21LogMagModel(FitModel):
     """ """
 
@@ -112,6 +131,47 @@ class S21CenteredPhaseModel(FitModel):
         fitfn = centered_phase
         super().__init__(fitfn, *args, **kwargs)
 
+    def center_phase(self, centered_s21, discont=1.5 * np.pi):
+        """transform centered complex S21 into continuous unwrapped centered phase"""
+        cphase = np.angle(centered_s21)
+
+        windowx = 0.25  # TODO CHANGE HARDCODED VALUE
+        points = len(centered_s21)
+
+        middle = np.argmax(np.abs(np.diff(cphase)))
+        print(middle)
+        left = max(0, middle - int(points * windowx))
+        right = min(middle + int(points * windowx), points)
+        print(left, right)
+
+        import matplotlib.pyplot as plt
+
+        plt.plot(cphase)
+        plt.title("cphase")
+        plt.show()
+        plt.plot(cphase[left:right])
+        plt.title("cphase sliced at discon")
+        plt.show()
+        plt.plot(np.diff(cphase))
+        plt.title("diff of cphase")
+        plt.show()
+        plt.plot(np.diff(cphase[left:right]))
+        plt.title("diff of cphase slice")
+        plt.show()
+
+        cphase_unwrapped = np.unwrap(cphase[left:right], discont=discont)
+        unwrap_diff_window = cphase_unwrapped - cphase[left:right]
+        left_pad = np.repeat(unwrap_diff_window[0], left)
+        right_pad = np.repeat(unwrap_diff_window[-1], points - right)
+
+        unwrap_diff = np.concatenate((left_pad, unwrap_diff_window, right_pad))
+        cphase += unwrap_diff
+
+        plt.plot(unwrap_diff)
+        plt.title("applied correction for unwrap")
+        plt.show()
+        return cphase
+
     def guess(self, data, f):
         """ """
         # guess resonance frequency to lie at the peak of the derivative of the data
@@ -133,40 +193,13 @@ class S21CenteredPhaseModel(FitModel):
         Ql_guess = fr_guess / fwhm_guess
         sign = -1 if data[0] < data[-1] else 1
 
-        #print(f"{hamp = }")
-        #print(f"{len(l) = }, {len(r) = }")
-        #print(f"{rhamp_i = }, {lhamp_i = }")
-        #print(f"{fwhm_guess = }")
-        #print(f"{Ql_guess = }")
-
-        # set bounds on the guesses and set them as the model's parameter hints
+        fspan = f[-1] - f[0]
+        # this fstep estimation works for both linear and homophasal frequency sweeps
+        fstep = np.abs(np.average(np.diff(f)))
         guesses = {
             "theta": {"value": theta_guess},
-            "fr": {"value": fr_guess, "min": f[0], "max": f[-1]},
-            "Ql": {
-                "value": Ql_guess,
-                "min": fr_guess / (f[-1] - f[0]),
-                "max": fr_guess / (f[1] - f[0]),
-            },
+            "fr": {"value": fr_guess, "min": min(f), "max": max(f)},
+            "Ql": {"value": Ql_guess, "min": fr_guess / fspan, "max": fr_guess / fstep},
             "sign": {"value": sign, "vary": False},
-        }
-        return self.make_params(guesses=guesses)
-
-
-class S21PhaseLinearModel(FitModel):
-    """Fit unwrapped s21 phase to a line to extract cable delay"""
-
-    def __init__(self, *args, **kwargs):
-        """ """
-        fitfn = cable_delay_linear
-        super().__init__(fitfn, *args, **kwargs)
-
-    def guess(self, data, f):
-        """ """
-        tau_guess = ((data[-1] - data[0]) / (f[-1] - f[0])) / (2 * np.pi)
-        theta_guess = np.average(data - 2 * np.pi * f * tau_guess)
-        guesses = {
-            "theta": {"value": theta_guess},
-            "tau": {"value": tau_guess},
         }
         return self.make_params(guesses=guesses)
