@@ -10,6 +10,23 @@ from rrfit.datahandler import Trace, Device
 from rrfit.fitfns import rr_s21_hanger, centered_phase
 
 
+def plot_delayfit(x, data, best_fit, residuals, tau):
+    """ """
+    fig, (res_ax, data_ax) = plt.subplots(2, 1, sharex=True, height_ratios=(1, 4))
+    fig.suptitle(f"Fitted cable delay: {tau:.3e}s")
+
+    res_ax.scatter(x, residuals, s=2, c="k")
+    res_ax.set(xlabel="Frequency (Hz)", ylabel="residuals")
+
+    data_ax.scatter(x, data, s=2, c="k", label="data")
+    data_ax.plot(x, best_fit, c="r", label="best fit")
+    data_ax.set(xlabel="Frequency (Hz)", ylabel="arg(S21) (rad)")
+    data_ax.legend()
+
+    fig.tight_layout()
+    plt.show()
+
+
 def plot_hangerfit(trace: Trace):
     """assume Trace has already been fitted"""
 
