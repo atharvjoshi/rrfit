@@ -52,7 +52,7 @@ def plot_hangerfit(trace: Trace):
     temp = trace.temperature
     temp_fmt = "" if type(temp) is empty else f"{temp * 1e3:.2f}mK"
     figtitle = (
-        f"S21 hanger fit for device {trace.device} trace #{trace.id} at "
+        f"S21 hanger fit for device {trace.device_name} trace #{trace.id} at "
         f"{trace.power:.1f}dBm {temp_fmt}\n"
     )
 

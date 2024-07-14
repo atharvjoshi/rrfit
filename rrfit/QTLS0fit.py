@@ -69,7 +69,7 @@ def fit_qlts0(device):
 
     trs = [tr for tr in device.traces if not tr.is_excluded]
     msmtPArray = np.asarray(
-        [np.power(10, (tr.power - device.attenuation - 30) / 10) for tr in trs]
+        [np.power(10, (tr.power - device.line_attenuation - 30) / 10) for tr in trs]
     )  # power into fridge
     freq0Array = np.asarray([tr.fr for tr in trs])
     freq0Avg = np.mean(freq0Array)
@@ -91,7 +91,7 @@ def fit_qlts0(device):
     for tr in trs:
         freq0 = tr.fr
         QInt = tr.Qi
-        msmtP = np.power(10, (tr.power - device.attenuation - 30) / 10)
+        msmtP = np.power(10, (tr.power - device.line_attenuation - 30) / 10)
         nbar = getPhotonNumber(
             freq0=freq0,
             QInt=QInt,

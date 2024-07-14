@@ -58,3 +58,7 @@ def centered_phase(x, fr, Ql, theta, sign=1):
     note that np.arctan return real values in the interval [-pi/2, pi/2]
     """
     return theta + 2 * np.arctan(2 * Ql * sign * (1 - x / fr))
+
+# TODO add nbar, temp functions
+
+#def qtls()
