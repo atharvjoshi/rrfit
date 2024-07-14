@@ -139,25 +139,25 @@ class S21CenteredPhaseModel(FitModel):
         points = len(centered_s21)
 
         middle = np.argmax(np.abs(np.diff(cphase)))
-        print(middle)
+        #print(middle)
         left = max(0, middle - int(points * windowx))
         right = min(middle + int(points * windowx), points)
-        print(left, right)
+        #print(left, right)
 
         import matplotlib.pyplot as plt
 
-        plt.plot(cphase)
-        plt.title("cphase")
-        plt.show()
-        plt.plot(cphase[left:right])
-        plt.title("cphase sliced at discon")
-        plt.show()
-        plt.plot(np.diff(cphase))
-        plt.title("diff of cphase")
-        plt.show()
-        plt.plot(np.diff(cphase[left:right]))
-        plt.title("diff of cphase slice")
-        plt.show()
+        #plt.plot(cphase)
+        #plt.title("cphase")
+        #plt.show()
+        #plt.plot(cphase[left:right])
+        #plt.title("cphase sliced at discon")
+        #plt.show()
+        #plt.plot(np.diff(cphase))
+        #plt.title("diff of cphase")
+        #plt.show()
+        #plt.plot(np.diff(cphase[left:right]))
+        #plt.title("diff of cphase slice")
+        #plt.show()
 
         cphase_unwrapped = np.unwrap(cphase[left:right], discont=discont)
         unwrap_diff_window = cphase_unwrapped - cphase[left:right]
@@ -167,9 +167,9 @@ class S21CenteredPhaseModel(FitModel):
         unwrap_diff = np.concatenate((left_pad, unwrap_diff_window, right_pad))
         cphase += unwrap_diff
 
-        plt.plot(unwrap_diff)
-        plt.title("applied correction for unwrap")
-        plt.show()
+        #plt.plot(unwrap_diff)
+        #plt.title("applied correction for unwrap")
+        #plt.show()
         return cphase
 
     def guess(self, data, f):
