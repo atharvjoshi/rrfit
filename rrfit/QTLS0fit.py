@@ -5,7 +5,47 @@ import lmfit
 from scipy.constants import k, hbar
 import matplotlib.pyplot as plt
 
+from rrfit.dataio import Device
+from rrfit.fitfns import dBmtoW, nbarvsPin
+from rrfit.models import QivsnbarModel
 
+
+def fit_qtls0(device: Device):
+    traces = [tr for tr in device.traces if not tr.is_excluded]
+    traces.sort(key=lambda x: x.power)
+    line_attenuation = getattr(device, "attenuation", 0)
+
+    pow_W = np.array([dBmtoW(tr.power - line_attenuation) for tr in traces])
+    fr = np.array([tr.fr for tr in traces])
+    fr_avg = np.mean(fr)
+
+    temp = np.array([tr.temperature for tr in traces])
+    temp_avg = np.mean(temp)
+
+    Qi = np.array([tr.Qi for tr in traces])
+    Qi_err = np.array([tr.Qi_err for tr in traces])
+    Ql = np.array([tr.Ql for tr in traces])
+    avgQc = np.mean(np.array([tr.absQc for tr in traces]))
+    avgphi = np.mean(np.array([tr.phi for tr in traces]))
+    
+    nbar = nbarvsPin(pow_W, fr_avg, Ql, avgQc)
+
+    result = QivsnbarModel(fr=fr_avg, temp=temp_avg).fit(Qi, nbar)
+    print(result.fit_report())
+
+    fig, (res_ax, data_ax) = plt.subplots(2, 1, sharex=True, height_ratios=(1, 4))
+    fig.suptitle(f"QTLS0 from Qi vs nbar")
+    res_ax.scatter(nbar, result.residual, s=8, c="k")
+    res_ax.set(xlabel="nbar", ylabel="residuals")
+    data_ax.errorbar(nbar, Qi, yerr=Qi_err, fmt="ko", label="data")
+    #data_ax.errorbar(nbar, Qi, yerr=0, fmt="ko", label="data")
+    data_ax.plot(nbar, result.best_fit, c="r", ls="--", label="best fit")
+    data_ax.set(xlabel="nbar", ylabel="Qi", yscale="log", xscale="log")
+    data_ax.legend()
+    fig.tight_layout()
+
+
+"""
 def getPhotonNumber(freq0, QInt, avgQC, msmtP, zFeed=50, zResonator=50):
     # Edited 10/24/2022 by KDC - added feedline and resonator impedance to account for case where resonator impedance is not equal to feedline impedance.
     pre_B = 2 / (hbar * ((2 * np.pi * freq0) ** 2))
@@ -63,18 +103,31 @@ def QIntFromNbar(params, freq0Avg, temp0Avg, nBar):
     return QInt
 
 
-def fit_qlts0(device):
+def fit_qlts0(device: Device):
     """ """
-    # TODO change hardcoded stuff, especially init guesses
+    traces = [tr for tr in device.traces if not tr.is_excluded]
+    line_attenuation = getattr(device, "attenuation", 0)
 
-    trs = [tr for tr in device.traces if not tr.is_excluded]
+    line_attenuation = getattr(device, "attenuation", 0)
+    pow_W = np.array([dBmtoW(tr.power - line_attenuation) for tr in traces])
+
+    fr = np.array([tr.fr for tr in traces])
+    fr_avg = np.mean(fr)
+
+    temperature = np.array([tr.temperature for tr in traces])
+    temperature_avg = np.mean(temperature)
+
+
     msmtPArray = np.asarray(
-        [np.power(10, (tr.power - device.line_attenuation - 30) / 10) for tr in trs]
+        [np.power(10, (tr.power - device.attenuation - 30) / 10) for tr in trs]
     )  # power into fridge
     freq0Array = np.asarray([tr.fr for tr in trs])
     freq0Avg = np.mean(freq0Array)
+
     temp0Array = np.asarray([tr.temperature for tr in trs])
     temp0Avg = np.mean(temp0Array)
+
+
     QIntArray = np.asarray([tr.Qi for tr in trs])  # Qint
     QIntErrArray = np.asarray([tr.Qi_err for tr in trs])  # std error of Qint
     QCArray = np.asarray([tr.absQc for tr in trs])
@@ -91,7 +144,7 @@ def fit_qlts0(device):
     for tr in trs:
         freq0 = tr.fr
         QInt = tr.Qi
-        msmtP = np.power(10, (tr.power - device.line_attenuation - 30) / 10)
+        msmtP = np.power(10, (tr.power - device.attenuation - 30) / 10)
         nbar = getPhotonNumber(
             freq0=freq0,
             QInt=QInt,
@@ -145,3 +198,4 @@ def fit_qlts0(device):
     # plt.xticks(fontsize=20)
     # plt.yticks(fontsize=20)
     # ax.set_title(str(dev.name) + ', f = {0:0.2f} GHz'.format(freq0Avg/1e9))
+"""
