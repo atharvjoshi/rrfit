@@ -1,13 +1,16 @@
 """ """
 
+from collections import defaultdict
 import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 
 from rrfit.circlefit import fit_circle
-from rrfit.datahandler import Trace, Device
+from rrfit.dataio import Trace, Device
 from rrfit.fitfns import rr_s21_hanger, centered_phase
+#from rrfit.waterfall import QIntVsTemp_consistent
+from rrfit.hangerfit import fit_s21
 
 
 def plot_delayfit(x, data, best_fit, residuals, tau):
@@ -27,8 +30,8 @@ def plot_delayfit(x, data, best_fit, residuals, tau):
     plt.show()
 
 
-def plot_hangerfit(trace: Trace):
-    """assume Trace has already been fitted"""
+def plot_hangerfit(trace: Trace, do_fit: bool = False):
+    """do_fit = True will refit Trace and overwrite any existing fit param values"""
 
     # get raw s21
     s21raw = trace.s21real + 1j * trace.s21imag
@@ -36,6 +39,11 @@ def plot_hangerfit(trace: Trace):
     # do cable delay correction
     tau = getattr(trace, "tau", 0)
     s21nodelay = s21raw * np.exp(-1j * 2 * np.pi * trace.frequency * tau)
+
+    if do_fit:
+        fit_params = fit_s21(s21nodelay, trace.frequency, plot=False)
+        for param, value in fit_params.items():
+            setattr(trace, param, value)
 
     # find s21 in the canonical position
     bamp = getattr(trace, "background_amp", 1)
@@ -140,3 +148,4 @@ def plot_Qs_vs_power(device: Device, figsize=(6, 8)):
     absQc_ax.set(xlabel="Power (dBm)", ylabel="|Qc|")
     fig.tight_layout()
     return fig
+
