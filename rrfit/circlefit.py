@@ -30,8 +30,11 @@ def fit_circle(s21):
     # calculate the matrix of moments M based on the scaled data
     M = get_moments(scaleddata)
 
+    # calculate the coefficients of charpoly from M
+    k0, k1, k2, k3, k4 = get_charpoly_coeffs(M)
+
     # calculate the eigenvalue l that solves characteristic polynomial det(M - mB) = 0
-    l = solve_charpoly(M)
+    l = solve_charpoly(k0, k1, k2, k3, k4)
 
     # adjust a subset of the moments using the computed eigenvalue l
     M[3][0] = M[0][3] = M[3][0] + 2 * l
@@ -91,13 +94,11 @@ def get_moments(data):
     return np.array(moments).reshape(4, 4)
 
 
-def solve_charpoly(M):
+def solve_charpoly(k0, k1, k2, k3, k4):
     """
-    M: 4x4 matrix of moments
+    k0, k1, k2, k3, k4: coefficients of the characteristics polynomial
     l is the smallest non-negative eigenvalue solved for using Newton-Raphson method. As the charpoly is decreasing and concave up between 0 and l, we are guaranteed to converge on l with an initial value of 0.
     """
-    # calculate the coefficients of charpoly from M
-    k0, k1, k2, k3, k4 = get_charpoly_coeffs(M)
 
     # define the charpoly and its derivative
     def charpoly(l):

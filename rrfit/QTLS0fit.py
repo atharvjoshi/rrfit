@@ -33,8 +33,11 @@ def fit_qtls0(device: Device):
     result = QivsnbarModel(fr=fr_avg, temp=temp_avg).fit(Qi, nbar)
     print(result.fit_report())
 
+    device.qtls0 = result.best_values["qtls0"]
+    device.qtls0_err = result.params["qtls0"].stderr
+
     fig, (res_ax, data_ax) = plt.subplots(2, 1, sharex=True, height_ratios=(1, 4))
-    fig.suptitle(f"QTLS0 from Qi vs nbar")
+    fig.suptitle(f"Device '{device.name}' (pitch {device.pitch}um) QTLS0 from Qi vs nbar")
     res_ax.scatter(nbar, result.residual, s=8, c="k")
     res_ax.set(xlabel="nbar", ylabel="residuals")
     data_ax.errorbar(nbar, Qi, yerr=Qi_err, fmt="ko", label="data")

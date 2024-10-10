@@ -12,7 +12,7 @@ from rrfit.models import S21Model, S21CenteredPhaseModel
 # TODO find a way for caller to provide experiment specific figtext
 
 
-def fit_s21(s21, f, plot=False, figsize=(12, 12), **params):
+def fit_s21(s21, f, plot=False, figsize=(12, 12), weights=None, method="least_squares", **params):
     """no cable delay correction"""
     s21raw = np.copy(s21)
 
@@ -56,8 +56,8 @@ def fit_s21(s21, f, plot=False, figsize=(12, 12), **params):
         "tau": {"value": 0, "vary": False},
     }
     guesses = s21_model.make_params(**guesses)
-    s21_result = s21_model.fit(s21, f, params=guesses)
-
+    s21_result = s21_model.fit(s21, f, params=guesses, weights=weights, method=method)
+    print(s21_result.fit_report())
     fit_failed = False
     # extract fit parameters as ufloats
     try:
@@ -85,6 +85,8 @@ def fit_s21(s21, f, plot=False, figsize=(12, 12), **params):
             "phi_err": phi.s,
             "background_amp": abs(orp),
             "background_phase": np.angle(orp),
+            "chisqr": s21_result.chisqr,
+            "redchi": s21_result.redchi,
         }
         fig_title = f"S21 fit [fr = {fr.n:.2g}, Qi = {Qi.n:.2g},"
         fig_title += f" Ql = {Ql.n:.2g}, |Qc| = {absQc.n:.2g}, phi = {phi.n:.2g}]"
@@ -102,6 +104,8 @@ def fit_s21(s21, f, plot=False, figsize=(12, 12), **params):
             "phi_err": None,
             "background_amp": abs(orp),
             "background_phase": np.angle(orp),
+            "chisqr": s21_result.chisqr,
+            "redchi": s21_result.redchi,
         }
         fig_title = "S21 data, fit errored out"
 
@@ -158,3 +162,11 @@ def fit_s21(s21, f, plot=False, figsize=(12, 12), **params):
         plt.show()
 
     return fit_params
+
+
+def fit_s21_weighted(s21, f, plot):
+    """ do weighted fit and use lmfit minimize to calculate uncertainties """
+
+    
+
+    pass
