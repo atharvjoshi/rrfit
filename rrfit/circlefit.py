@@ -154,12 +154,12 @@ def get_circle_coeffs(M):
     return v[:, np.argmin(w)]
 
 
-def fit_background(s21, f, discont=1.5 * np.pi):
+def fit_background(s21, f, discont=1.5 * np.pi, windowx=0.25):
     """ """
     radius, center = fit_circle(s21)
 
     model = S21CenteredPhaseModel()
-    centered_phase = model.center_phase(s21 - center, discont=discont)
+    centered_phase = model.center_phase(s21 - center, discont=discont, windowx=windowx)
     result = model.fit(centered_phase, f)
 
     theta = result.best_values["theta"]
